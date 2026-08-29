@@ -4,12 +4,17 @@ import { AuthCard } from "@/components/AuthCard";
 import { HostMismatchBanner } from "@/components/HostMismatchBanner";
 import { SiteHeader } from "@/components/SiteHeader";
 import { WireInspector } from "@/components/WireInspector";
+import { getSessionState } from "@/lib/auth";
 import { publicConfig } from "@/lib/config";
-import { getSessionUserId } from "@/lib/session";
 import { storeDriver } from "@/lib/store";
 
 export default async function Home() {
-  if (await getSessionUserId()) {
+  const session = await getSessionState();
+
+  // Only redirect when the account actually exists. A cookie pointing at a
+  // missing user renders the sign-in page instead, which is what stops `/` and
+  // `/dashboard` bouncing off each other.
+  if (session.status === "authenticated") {
     redirect("/dashboard");
   }
 
@@ -20,6 +25,14 @@ export default async function Home() {
 
       <main className="mx-auto grid w-full max-w-[1500px] flex-1 gap-8 px-6 py-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
         <div className="space-y-8">
+          {session.status === "stale" ? (
+            <p className="border-2 border-red bg-red/10 p-4 text-sm">
+              Your session pointed at an account the server no longer has —
+              either the demo was reset, or storage dropped it. Sign in again, or
+              create a new account.
+            </p>
+          ) : null}
+
           <AuthCard rpId={publicConfig.rpId} />
 
           <aside className="border-2 border-ink/20 p-6 text-sm leading-relaxed text-gray">

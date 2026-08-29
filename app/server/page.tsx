@@ -2,9 +2,9 @@ import Link from "next/link";
 
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { SiteHeader } from "@/components/SiteHeader";
+import { getSessionState } from "@/lib/auth";
 import { publicConfig } from "@/lib/config";
-import { getSessionUserId } from "@/lib/session";
-import { findUserById, readDatabase, storeDriver } from "@/lib/store";
+import { readDatabase, storeDriver } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -31,8 +31,7 @@ function Stat({
 
 export default async function ServerState() {
   const db = await readDatabase();
-  const userId = await getSessionUserId();
-  const signedIn = userId ? await findUserById(userId) : null;
+  const session = await getSessionState();
 
   const credentialCount = db.users.reduce(
     (total, user) => total + user.credentials.length,
@@ -45,7 +44,7 @@ export default async function ServerState() {
       <SiteHeader
         rpId={publicConfig.rpId}
         storeDriver={storeDriver}
-        signedInAs={signedIn?.username ?? null}
+        signedInAs={session.user?.username ?? null}
       />
 
       <main className="mx-auto w-full max-w-[1500px] flex-1 space-y-10 px-6 py-10">

@@ -28,11 +28,12 @@ Configuration lives in `.env.local`; see `.env.example` for every option.
 
 ## What's in it
 
-| Route        | Purpose                                                                     |
-| ------------ | --------------------------------------------------------------------------- |
-| `/`          | Sign in / create account, with the wire inspector alongside                 |
-| `/dashboard` | Signed-in view: every passkey on the account, and a button to enrol another |
-| `/server`    | The whole database, plus the live RP configuration                          |
+| Route         | Purpose                                                                     |
+| ------------- | --------------------------------------------------------------------------- |
+| `/`           | Sign in / create account, with the wire inspector alongside                 |
+| `/dashboard`  | Signed-in view: every passkey on the account, and a button to enrol another |
+| `/server`     | The whole database, plus the live RP configuration                          |
+| `/api/health` | Pre-flight check: proves the store is reachable, writable, and durable      |
 
 Three things are worth pointing at during a talk:
 
@@ -68,12 +69,15 @@ In Vercel → Settings → Environment Variables:
 ```
 NEXT_PUBLIC_RP_NAME=Passkey Demo
 NEXT_PUBLIC_RP_ID=passkey.karanpatel.ca
-NEXT_PUBLIC_ORIGINS=https://passkey.karanpatel.ca
 SESSION_SECRET=<a long random string>
 ```
 
 `NEXT_PUBLIC_*` values are inlined at build time, so **redeploy after changing
 them**.
+
+That's the whole list. The accepted origin is derived from the RP ID, so
+`NEXT_PUBLIC_ORIGINS` is only needed if you want to accept more than one — and a
+missing `https://` gets filled in either way.
 
 > Pin `NEXT_PUBLIC_RP_ID` to the full hostname. Setting it to `karanpatel.ca`
 > would be valid WebAuthn — a registrable suffix — but the passkey would then
@@ -83,14 +87,25 @@ them**.
 ### 3. Add persistent storage
 
 Without a Redis URL the app writes to a JSON file. On Vercel that file lives in
-`/tmp` on one serverless instance, so a cold start between two demo beats can
-lose the passkey you just registered.
+`/tmp` on **one** serverless instance. A cold start, or a second instance picking
+up a request, loses every passkey registered against the old one. It usually
+survives a continuously-active 15 minutes — "usually" being the problem.
 
-Add **Upstash Redis** from the Vercel marketplace and link it to the project.
-`KV_REST_API_URL` and `KV_REST_API_TOKEN` get injected automatically; the app
-picks them up with no code change. The header shows a `store: file` chip
-whenever Redis is _not_ configured — if you see that chip on the deployed site,
-storage isn't wired up yet.
+The fix is free and takes about two minutes, on any Vercel plan:
+
+1. Sign up at [upstash.com](https://upstash.com) and create a Redis database
+   (free tier: 256 MB, plenty for this).
+2. Copy the **REST URL** and **REST token** from its dashboard.
+3. Add them to the Vercel project as `UPSTASH_REDIS_REST_URL` and
+   `UPSTASH_REDIS_REST_TOKEN`, then redeploy.
+
+The app reads those names directly, so nothing else changes. Going through the
+Vercel Marketplace instead injects `KV_REST_API_URL` / `KV_REST_API_TOKEN`, which
+the app also accepts — but signing up with Upstash directly sidesteps any
+question of what your Vercel plan allows.
+
+The header shows a `store: file` chip whenever Redis is _not_ configured. If you
+see that chip on the deployed site, storage isn't wired up yet.
 
 ### 4. Set up the look-alike domain
 
@@ -112,6 +127,11 @@ Fifteen minutes, cold open first.
 
 ### Before you walk in
 
+- [ ] Load **`/api/health`** on the deployed URL. You want
+      `"ok": true`, `"storeDriver": "redis"`, and
+      `"probe": "value written and read back intact"`. It writes a real value to
+      the store and reads it back, so it catches the case where the app loads
+      fine but nothing actually persists.
 - [ ] Register your **laptop** passkey on the deployed URL.
 - [ ] Register your **phone** passkey too: sign in on the laptop, go to the
       dashboard, hit **Add another passkey**, choose _Use a phone or tablet_,

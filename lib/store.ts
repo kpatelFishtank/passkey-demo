@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
+import { RP_ID } from "./config";
 import { emptyDatabase, type Database, type StoredUser } from "./types";
 
 /**
@@ -19,7 +20,13 @@ import { emptyDatabase, type Database, type StoredUser } from "./types";
  * whether the deployment will actually remember anything.
  */
 
-const KEY = "passkey-demo:db";
+/**
+ * Namespaced by RP ID so local development and the deployed demo can point at
+ * the same Redis database without mixing credentials -- a passkey registered
+ * against `localhost` would never verify against `passkey.karanpatel.ca`, and
+ * seeing both listed on /server would just be confusing.
+ */
+const KEY = `passkey-demo:${RP_ID}:db`;
 
 const redisUrl =
   process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL ?? null;
@@ -75,15 +82,44 @@ async function writeFileDatabase(db: Database): Promise<void> {
 export async function readDatabase(): Promise<Database> {
   if (storeDriver === "redis") {
     const raw = await redisCommand<string | null>(["GET", KEY]);
-    if (!raw) return emptyDatabase();
-    try {
-      return JSON.parse(raw) as Database;
-    } catch {
-      return emptyDatabase();
-    }
+    if (raw === null || raw === undefined || raw === "") return emptyDatabase();
+
+    // Upstash returns the stored string, but be tolerant of a client or proxy
+    // that hands back already-parsed JSON.
+    if (typeof raw === "object") return raw as Database;
+
+    // Deliberately not caught. Swallowing this would quietly return an empty
+    // database, which reads as "your account vanished" rather than "storage is
+    // misconfigured" -- a terrible thing to discover mid-demo.
+    return JSON.parse(raw) as Database;
   }
 
   return readFileDatabase();
+}
+
+/**
+ * Writes a value under a scratch key and reads it back, to prove the store is
+ * genuinely round-tripping data. Uses its own key, so it never touches real
+ * accounts.
+ */
+export async function probeStore(
+  token: string,
+): Promise<{ wrote: string; readBack: string | null }> {
+  const payload = JSON.stringify({ token, users: [{ id: token }] });
+
+  if (storeDriver === "redis") {
+    await redisCommand(["SET", `${KEY}:probe`, payload]);
+    const raw = await redisCommand<string | null>(["GET", `${KEY}:probe`]);
+    return {
+      wrote: payload,
+      readBack: typeof raw === "string" ? raw : raw === null ? null : JSON.stringify(raw),
+    };
+  }
+
+  const probeFile = path.join(dataDir, "probe.json");
+  await fs.mkdir(dataDir, { recursive: true });
+  await fs.writeFile(probeFile, payload, "utf8");
+  return { wrote: payload, readBack: await fs.readFile(probeFile, "utf8") };
 }
 
 export async function writeDatabase(db: Database): Promise<void> {

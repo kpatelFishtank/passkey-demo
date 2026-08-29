@@ -4,19 +4,17 @@ import { AddPasskeyButton } from "@/components/AddPasskeyButton";
 import { CredentialCard } from "@/components/CredentialCard";
 import { SiteHeader } from "@/components/SiteHeader";
 import { WireInspector } from "@/components/WireInspector";
+import { getSessionState } from "@/lib/auth";
 import { publicConfig } from "@/lib/config";
-import { getSessionUserId } from "@/lib/session";
-import { findUserById, storeDriver } from "@/lib/store";
+import { storeDriver } from "@/lib/store";
 
 export default async function Dashboard({
   searchParams,
 }: PageProps<"/dashboard">) {
-  const userId = await getSessionUserId();
-  if (!userId) redirect("/");
+  const session = await getSessionState();
+  if (session.status !== "authenticated") redirect("/");
 
-  const user = await findUserById(userId);
-  if (!user) redirect("/");
-
+  const user = session.user;
   const params = await searchParams;
   const via = typeof params.via === "string" ? params.via : null;
   const usedCredentialId =

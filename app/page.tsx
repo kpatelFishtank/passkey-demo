@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
 import { AuthCard } from "@/components/AuthCard";
-import { HostMismatchBanner } from "@/components/HostMismatchBanner";
 import { SiteHeader } from "@/components/SiteHeader";
 import { WireInspector } from "@/components/WireInspector";
 import { getSessionState } from "@/lib/auth";
@@ -20,7 +19,12 @@ export default async function Home() {
 
   return (
     <>
-      <HostMismatchBanner rpId={publicConfig.rpId} />
+      {/*
+       * Deliberately nothing here announces a hostname mismatch. On the
+       * look-alike domain this page is indistinguishable from the real one --
+       * which is the phishing demo's whole argument. The reveal lives in
+       * AuthCard, after the browser refuses the ceremony.
+       */}
       <SiteHeader rpId={publicConfig.rpId} storeDriver={storeDriver} />
 
       <main className="mx-auto grid w-full max-w-[1500px] flex-1 gap-8 px-6 py-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">

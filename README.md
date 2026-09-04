@@ -109,15 +109,27 @@ see that chip on the deployed site, storage isn't wired up yet.
 
 ### 4. Set up the look-alike domain
 
-Point a second hostname at the same Vercel deployment — `passkeys.karanpatel.ca`
-(plural) reads convincingly:
+Point a second hostname at the same Vercel deployment: **`paskey.karanpatel.ca`**
+— the real host with one `s` dropped.
 
-1. Add the domain to the same Vercel project.
-2. Change nothing else. The RP ID stays `passkey.karanpatel.ca`.
+1. Add the domain to the same Vercel project, so it gets a valid certificate.
+   The "same code, same server, valid padlock" line only lands if the padlock is
+   genuinely there.
+2. Change nothing else. In particular do **not** add it to
+   `NEXT_PUBLIC_ORIGINS`; the RP ID stays `passkey.karanpatel.ca`.
 
-Now the identical app, on identical infrastructure, with a valid certificate,
-cannot use the passkeys. The browser refuses before any prompt appears, and the
-app shows an explanation of why.
+A dropped letter is deliberate. A plural (`passkeys`) is a brand squat — nobody's
+finger slips and produces an extra `s` — and it's easy enough to spot that half
+the room concludes "I'd have caught that." A missing letter is both the most
+common real typo and effectively invisible, which is the argument: the human
+check fails, and the browser refuses anyway.
+
+**The app does not label the look-alike host.** On `paskey.karanpatel.ca` the
+page is indistinguishable from the real one, because a phishing site would be.
+The reveal comes only after you attempt the sign-in: the browser refuses, and
+the app then shows both hostnames stacked with the differing character marked —
+a caret where the letter is missing, and the letter itself highlighted on the
+real host. That's what lets you ask the room to spot it first.
 
 ---
 
@@ -141,6 +153,9 @@ Fifteen minutes, cold open first.
       it for a proximity check and silently fails without it.
 - [ ] Phone off Wi-Fi-only captive portals; the QR flow needs a real connection.
 - [ ] Two browser windows: the demo app, and `/server` on the second monitor.
+- [ ] Open `paskey.karanpatel.ca` once and attempt a sign-in, to confirm the
+      refusal notice appears and marks the missing letter. Nothing on that page
+      announces the mismatch until you try, so this is the only way to check it.
 - [ ] A screen recording of the cross-device flow, in case the room's network
       fights you.
 - [ ] Sign out — the cold open starts from a signed-out screen.
@@ -153,7 +168,7 @@ Fifteen minutes, cold open first.
 | **7:30 Register**      | Reset the demo, create an account.                                           | Walk the wire inspector: challenge in, public key out.                                                            |
 | **8:30 The database**  | Switch to `/server`.                                                         | "Zero passwords. Zero hashes. If this leaks tomorrow, the attacker gets public keys."                             |
 | **9:30 Sign in**       | Sign out, click the username field, use the autofill dropdown.               | "No username, no password, no second factor prompt. One gesture."                                                 |
-| **10:30 Phishing**     | Open the look-alike hostname. Try to sign in.                                | "Same code, same server, valid certificate. The browser refuses. I own both domains and I still can't do it."     |
+| **10:30 Phishing**     | Open `paskey.karanpatel.ca`. Point at the address bar and ask the room to spot the problem. Wait. Then try to sign in. | "Same code, same server, valid certificate." → "Can anyone see the problem?" → _(let it sit)_ → "One letter. I own both domains and I still can't sign in. And you wouldn't have caught it either." |
 | **11:30 Cross-device** | Back on the real domain, sign in → _Use a phone or tablet_ → scan → Face ID. | "My phone never contacted the server. It signed a challenge and passed it back over a Bluetooth-verified tunnel." |
 
 **Reset demo** in the header wipes every account. Note that it does _not_ remove

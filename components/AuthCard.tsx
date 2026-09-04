@@ -12,6 +12,7 @@ import {
   registerPasskey,
   signInWithPasskey,
 } from "@/lib/ceremonies";
+import { diffHosts } from "@/lib/hostDiff";
 import { useClientValue } from "@/lib/useClientValue";
 
 type Status =
@@ -219,30 +220,64 @@ export function AuthCard({ rpId }: { rpId: string }) {
 
 /**
  * Shown when the browser refuses the ceremony because the page's origin does
- * not match the configured RP ID. This is the phishing demo landing.
+ * not match the configured RP ID. This is the phishing demo's payoff.
+ *
+ * Nothing on this page announces the mismatch beforehand — a real phishing site
+ * wouldn't, and the demo works by letting the room fail to spot it first. The
+ * reveal, including which character differs, arrives only after the attempt.
  */
 function OriginMismatchNotice({ rpId }: { rpId: string }) {
   const host = useClientValue(() => window.location.hostname) ?? "";
+  const diff = diffHosts(host, rpId);
 
   return (
     <div className="pk-fade-in mt-6 border-2 border-red">
       <p className="bg-red px-4 py-2 font-semibold text-cream">
         The browser blocked it.
       </p>
-      <div className="space-y-3 p-4 text-sm">
-        <p>
-          This page is served from{" "}
-          <span className="font-mono font-semibold">{host}</span>, but it asked
-          for a passkey belonging to{" "}
-          <span className="font-mono font-semibold">{rpId}</span>.
-        </p>
-        <p>
+
+      <div className="space-y-4 p-5">
+        <dl className="space-y-2 font-mono text-xl sm:text-2xl">
+          <div className="flex flex-wrap items-baseline gap-x-3">
+            <dt className="w-36 shrink-0 font-sans text-xs uppercase tracking-wide text-gray">
+              this page
+            </dt>
+            <dd>
+              {diff.actual.prefix}
+              {diff.actual.middle ? (
+                <span className="bg-red px-0.5 text-cream">
+                  {diff.actual.middle}
+                </span>
+              ) : (
+                // A character was dropped. Mark the gap where it should be.
+                <span className="text-red" aria-label="missing character">
+                  ‸
+                </span>
+              )}
+              {diff.actual.suffix}
+            </dd>
+          </div>
+          <div className="flex flex-wrap items-baseline gap-x-3">
+            <dt className="w-36 shrink-0 font-sans text-xs uppercase tracking-wide text-gray">
+              passkeys here
+            </dt>
+            <dd>
+              {diff.expected.prefix}
+              {diff.expected.middle ? (
+                <span className="bg-yellow px-0.5">{diff.expected.middle}</span>
+              ) : null}
+              {diff.expected.suffix}
+            </dd>
+          </div>
+        </dl>
+
+        <p className="text-sm">
           The browser refused before any prompt appeared. Nothing was sent to
-          the server, and no amount of convincing UI on this page could have
+          the server, and no amount of convincing design on this page could have
           changed that — the check happens below the page, in the browser
           itself.
         </p>
-        <p className="text-gray">
+        <p className="text-sm text-gray">
           A password would have been typed straight into this form.
         </p>
       </div>
